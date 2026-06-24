@@ -1,0 +1,31 @@
+# defines order of phases for pipeline
+# code moves to "security" only if all jobs in "test" pass
+stages: 
+  - test
+  - security
+
+# defines the test phase
+test:
+  stage: test # assigns job to run during test phase
+  image: node:20 # spins up an isolated environement that runs node v20
+  script:
+    - npm install # auto downloads jest/ other requirements from package.json
+    - npm test # triggers script to run jest validation
+
+# defines code quality standards
+jshint_scan:
+  stage: security # assigns job to run during "security" phase
+  image: node:20 # uses node v20 to ensure run stability
+  before_script:
+    - npm install -g jshint # installs jshint globally to run validation
+  script:
+    - jshint validatePalindrome.js > jshint-report.txt # checks code for syntax errors and outputs that result in a text file
+  artifacts:
+    paths:
+      - jshint-report.txt # tells gitlab to make text file ready for download 
+    when: always # ensures the report downloads despite errors or warnings
+    expire_in: 1 week # safely stores report on gitlab for 1 week before cleanup
+
+# pull gitlabs built in scanning configs
+include:
+  - template: Security/Secret-Detection.gitlab-ci.yml # integrates auto detection to block leaked tokens
